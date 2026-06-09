@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
     console.log(`[IMAGE] Generando: ${prompt}`);
 
-    // Usar Stable Diffusion 3 vía Replicate
+    // Usar Stable Diffusion 2.1 (versión estable en Replicate)
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -40,17 +40,21 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        version: 'a1c969823fbf3d46378b0cf1d5aac33f51ed7f6f1abe21b155c23b432f38cbf1',
+        version: 'ac732df83cea7fff18b8472768c88ad041fa750ff7682a21aef3f2b32f0d9b9e',
         input: {
           prompt: prompt,
-          negative_prompt: 'blurry, low quality, distorted'
+          negative_prompt: 'blurry, low quality, distorted, ugly',
+          num_outputs: 1,
+          guidance_scale: 7.5,
+          num_inference_steps: 25
         }
       })
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Replicate error: ${JSON.stringify(error)}`);
+      console.error('[IMAGE] Replicate error:', error);
+      throw new Error(`Replicate: ${error.detail || error.title || 'Error desconocido'}`);
     }
 
     const prediction = await response.json();
@@ -82,7 +86,7 @@ export default async function handler(req, res) {
     }
 
     if (!imageUrl) {
-      throw new Error('Timeout al generar imagen');
+      throw new Error('Timeout: imagen no generada en 60 segundos');
     }
 
     return res.status(200).json({
@@ -94,8 +98,7 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('[IMAGE ERROR]', e.message);
     return res.status(500).json({
-      error: 'Error al generar imagen',
-      details: e.message
+      error: e.message
     });
   }
 }

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   for (const word of blockedWords) {
     if (promptLower.includes(word)) {
       return res.status(400).json({ 
-        error: 'El prompt contiene contenido inapropiado. Por favor, solicita imágenes educativas.' 
+        error: 'El prompt contiene contenido inapropiado.' 
       });
     }
   }
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
     console.log(`[IMAGE] Generando: ${prompt}`);
 
-    // Usar Stable Diffusion 2.1 (versión estable en Replicate)
+    // Crear predicción con modelo de Replicate
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -40,32 +40,28 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        version: 'ac732df83cea7fff18b8472768c88ad041fa750ff7682a21aef3f2b32f0d9b9e',
+        model: 'stability-ai/stable-diffusion-3',
         input: {
-          prompt: prompt,
-          negative_prompt: 'blurry, low quality, distorted, ugly',
-          num_outputs: 1,
-          guidance_scale: 7.5,
-          num_inference_steps: 25
+          prompt: prompt
         }
       })
     });
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('[IMAGE] Replicate error:', error);
-      throw new Error(`Replicate: ${error.detail || error.title || 'Error desconocido'}`);
+      console.error('[IMAGE] API error:', error);
+      throw new Error(`API Error: ${error.detail || error.title || 'Desconocido'}`);
     }
 
     const prediction = await response.json();
     console.log(`[IMAGE] Prediction ID: ${prediction.id}`);
 
-    // Esperar a que se complete (máx 60 segundos)
+    // Esperar a que se complete (máx 120 segundos)
     let completed = false;
     let attempts = 0;
     let imageUrl = null;
 
-    while (!completed && attempts < 120) {
+    while (!completed && attempts < 240) {
       await new Promise(r => setTimeout(r, 500));
 
       const statusResponse = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
@@ -77,7 +73,7 @@ export default async function handler(req, res) {
       if (statusData.status === 'succeeded') {
         imageUrl = statusData.output?.[0];
         completed = true;
-        console.log(`[IMAGE] ✅ Completada: ${imageUrl}`);
+        console.log(`[IMAGE] ✅ Completada`);
       } else if (statusData.status === 'failed') {
         throw new Error(`Generación fallida: ${statusData.error}`);
       }
@@ -86,7 +82,7 @@ export default async function handler(req, res) {
     }
 
     if (!imageUrl) {
-      throw new Error('Timeout: imagen no generada en 60 segundos');
+      throw new Error('Timeout: imagen no generada');
     }
 
     return res.status(200).json({

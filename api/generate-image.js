@@ -21,10 +21,11 @@ export default async function handler(req, res) {
 
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
-    return res.status(500).json({ error: 'REPLICATE_API_TOKEN no configurado en Vercel' });
+    return res.status(500).json({ error: 'REPLICATE_API_TOKEN no configurado' });
   }
 
   try {
+    // Usar Stable Diffusion 3.5 Large (modelo oficial, muy estable)
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -32,19 +33,23 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        version: "da77bc2ee1e15ea2c5eabf5b6db8ec6b1c3b1d2f8e6c3a5c4e7a9c8b4f2a1e3d",
+        version: "8a9fbb4cbd6591f4e41c4d94125aa27c32b2260fdc7b0c03d1cc9e4f6cbea5a6",
         input: {
           prompt: prompt,
-          go_fast: true,
+          negative_prompt: "blurry, low quality, distorted, ugly, bad anatomy",
+          width: 1024,
+          height: 1024,
           num_outputs: 1,
-          aspect_ratio: "1:1",
-          output_format: "webp"
+          scheduler: "DPMSolverMultistep",
+          num_inference_steps: 25,
+          guidance_scale: 7
         }
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('[REPLICATE ERROR]', errorText);
       throw new Error(`Replicate error: ${response.status} - ${errorText}`);
     }
 

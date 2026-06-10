@@ -1,79 +1,64 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Content-Type', 'application/json');
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido' });
   }
 
   const { prompt } = req.body;
-
   if (!prompt || prompt.trim().length === 0) {
     return res.status(400).json({ error: 'Prompt vacío' });
   }
 
-  // Filtros de seguridad para menores
-  const blockedWords = ['violencia', 'arma', 'sangre', 'muerte', 'droga', 'sexual', 'adulto', 'pornografía', 'desnudo'];
+  // Seguridad para menores
+  const blockedWords = ['violencia', 'arma', 'sangre', 'muerte', 'droga', 'sexual', 'adulto', 'pornografía'];
   const promptLower = prompt.toLowerCase();
-  
   for (const word of blockedWords) {
     if (promptLower.includes(word)) {
-      return res.status(400).json({ 
-        error: 'El prompt contiene contenido inapropiado. Solicita imágenes educativas.' 
-      });
+      return res.status(400).json({ error: 'Contenido inapropiado. Solicita imágenes educativas.' });
     }
   }
 
+  const token = process.env.REPLICATE_API_TOKEN;
+  if (!token) {
+    return res.status(500).json({ error: 'REPLICATE_API_TOKEN no configurado' });
+  }
+
   try {
-    const token = process.env.HUGGINGFACE_API_TOKEN;
-    if (!token) {
-      throw new Error('HUGGINGFACE_API_TOKEN no configurado');
-    }
-
-    console.log(`[IMAGE] Prompt: ${prompt}`);
-
-    // Usar Stable Diffusion 2.1 vía Hugging Face Inference API
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1',
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        method: 'POST',
-        body: JSON.stringify({ inputs: prompt }),
-      }
-    );
-
-    console.log(`[IMAGE] HF Status: ${response.status}`);
+    // Usar flux-schnell (mucho más rápido y confiable)
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        version: "da77bc2ee1e15ea2c5eabf5b6db8ec6b1c3b1d2f8e6c3a5c4e7a9c8b4f2a1e3d",
+        input: {
+          prompt: prompt,
+          go_fast: true,
+          num_outputs: 1,
+          aspect_ratio: "1:1",
+          output_format: "webp"
+        }
+      })
+    });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('[IMAGE] HF Error:', error);
-      throw new Error(error.error || `HF Error ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Replicate error: ${response.status} - ${errorText}`);
     }
 
-    // La respuesta es un blob (imagen)
-    const blob = await response.blob();
+    const prediction = await response.json();
     
-    if (!blob || blob.size === 0) {
-      throw new Error('Imagen vacía recibida');
-    }
-
-    // Convertir blob a base64
-    const buffer = await blob.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString('base64');
-    const imageUrl = `data:image/jpeg;base64,${base64}`;
-
-    console.log(`[IMAGE] ✅ Generada exitosamente`);
-
+    // ✅ Devuelve inmediatamente el ID de la predicción
     return res.status(200).json({
-      success: true,
-      imageUrl: imageUrl,
-      prompt: prompt
+      id: prediction.id,
+      status: prediction.status
     });
 
-  } catch (e) {
-    console.error('[IMAGE ERROR]', e.message);
-    return res.status(500).json({
-      error: e.message
-    });
+  } catch (error) {
+    console.error('[GENERATE-IMAGE ERROR]', error);
+    return res.status(500).json({ error: error.message });
   }
 }

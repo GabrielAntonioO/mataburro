@@ -23,8 +23,8 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     return res.status(200).json({
-      status: data.status, // "starting", "processing", "succeeded", "failed"
-      output: data.output, // array de URLs cuando succeeded
+      status: data.status,
+      output: data.output,
       error: data.error
     });
 

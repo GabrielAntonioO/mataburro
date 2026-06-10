@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mataburro</title>
+  <title>Mataburro - Asistente Educativo con Imágenes</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -84,16 +84,31 @@
       border-radius: 18px 18px 18px 4px;
     }
 
-    .image-container {
+    .image-message {
       max-width: 70%;
-      margin: 12px 0;
-      animation: slideIn 0.3s ease;
+      margin: 8px 0;
     }
 
-    .image-container img {
-      width: 100%;
+    .image-message img {
+      max-width: 100%;
       border-radius: 12px;
+      cursor: pointer;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+
+    .image-message img:hover {
+      transform: scale(1.02);
+    }
+
+    .prompt-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+      padding: 4px 8px;
+      background: #f0f0f0;
+      border-radius: 8px;
+      display: inline-block;
     }
 
     .loading {
@@ -176,20 +191,6 @@
       cursor: not-allowed;
     }
 
-    #image-btn {
-      background: #2196F3;
-      color: white;
-    }
-
-    #image-btn:hover {
-      background: #0b7dda;
-    }
-
-    #image-btn:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-
     #clear-btn {
       background: #f44336;
       color: white;
@@ -199,12 +200,36 @@
       background: #da190b;
     }
 
+    #image-btn {
+      background: #9C27B0;
+      color: white;
+    }
+
+    #image-btn:hover {
+      background: #7B1FA2;
+    }
+
+    #image-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
     .error {
       background: #ffebee;
       color: #c62828;
       padding: 12px 16px;
       border-radius: 8px;
       border-left: 4px solid #c62828;
+      margin: 8px 0;
+    }
+
+    .image-loading {
+      background: #f0f0f0;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -212,7 +237,7 @@
 
 <header>
   <h1>🤔 Mataburro</h1>
-  <p>Tu asistente educativo con imágenes</p>
+  <p>Tu asistente educativo con generación de imágenes</p>
 </header>
 
 <div id="chat-container"></div>
@@ -221,6 +246,9 @@
   <div class="input-group">
     <input type="text" id="user-input" placeholder="Escribe tu pregunta..." />
     <button id="send-btn">📝 Enviar</button>
+  </div>
+  <div class="input-group">
+    <input type="text" id="image-prompt" placeholder="Describe una imagen (ej: un cubo con sus partes)" />
     <button id="image-btn">🎨 Generar imagen</button>
   </div>
   <button id="clear-btn">🗑️ Limpiar</button>
@@ -230,10 +258,18 @@
   const chatContainer = document.getElementById('chat-container');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
-  const imageBtn = document.getElementById('image-btn');
   const clearBtn = document.getElementById('clear-btn');
+  const imagePrompt = document.getElementById('image-prompt');
+  const imageBtn = document.getElementById('image-btn');
 
   let messages = [];
+
+  // Escape HTML
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
 
   // Load messages from localStorage
   function loadMessages() {
@@ -251,27 +287,24 @@
   function renderChat() {
     chatContainer.innerHTML = '';
     messages.forEach(msg => {
-      const div = document.createElement('div');
-      div.className = `message ${msg.role}`;
-      
       if (msg.type === 'image') {
-        const imgDiv = document.createElement('div');
-        imgDiv.className = 'image-container';
-        imgDiv.innerHTML = `<img src="${msg.content}" alt="Generated image">`;
-        chatContainer.appendChild(imgDiv);
+        const div = document.createElement('div');
+        div.className = 'message ai';
+        div.innerHTML = `
+          <div class="image-message">
+            <img src="${msg.url}" alt="Imagen generada" loading="lazy" onclick="window.open('${msg.url}', '_blank')" />
+            <div class="prompt-text">🎨 ${escapeHtml(msg.prompt)}</div>
+          </div>
+        `;
+        chatContainer.appendChild(div);
       } else {
+        const div = document.createElement('div');
+        div.className = `message ${msg.role}`;
         div.innerHTML = `<div class="message-bubble">${escapeHtml(msg.content)}</div>`;
         chatContainer.appendChild(div);
       }
     });
     chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
-
-  // Escape HTML
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   // Show loading indicator
@@ -290,12 +323,11 @@
     if (!text) return;
 
     // Add user message
-    messages.push({ role: 'user', content: text, type: 'text' });
+    messages.push({ role: 'user', content: text });
     saveMessages();
     renderChat();
     userInput.value = '';
     sendBtn.disabled = true;
-    imageBtn.disabled = true;
 
     // Show loading
     const loadingDiv = showLoading();
@@ -304,7 +336,7 @@
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages })
+        body: JSON.stringify({ messages: messages.filter(m => m.type !== 'image') })
       });
 
       loadingDiv.remove();
@@ -315,7 +347,7 @@
       }
 
       const data = await response.json();
-      messages.push({ role: 'ai', content: data.response, type: 'text' });
+      messages.push({ role: 'assistant', content: data.response });
       saveMessages();
       renderChat();
 
@@ -326,65 +358,105 @@
       div.textContent = '❌ Error: ' + e.message;
       chatContainer.appendChild(div);
       chatContainer.scrollTop = chatContainer.scrollHeight;
+      setTimeout(() => div.remove(), 5000);
       messages.pop();
     } finally {
       sendBtn.disabled = false;
-      imageBtn.disabled = false;
       userInput.focus();
     }
   }
 
   // Generate image
   async function generateImage() {
-    const prompt = userInput.value.trim();
+    const prompt = imagePrompt.value.trim();
     if (!prompt) {
-      alert('Escribe una descripción para la imagen');
+      alert('Describe la imagen que quieres generar');
       return;
     }
 
-    sendBtn.disabled = true;
     imageBtn.disabled = true;
-
-    // Add user prompt
-    messages.push({ role: 'user', content: `🎨 Genera imagen: ${prompt}`, type: 'text' });
-    saveMessages();
-    renderChat();
-    userInput.value = '';
-
-    // Show loading
-    const loadingDiv = showLoading();
+    imageBtn.textContent = '⏳ Iniciando...';
 
     try {
-      const response = await fetch('/api/generate-image', {
+      // 1. Iniciar predicción
+      const startRes = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
 
-      loadingDiv.remove();
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || `Error ${response.status}`);
+      if (!startRes.ok) {
+        const err = await startRes.json();
+        throw new Error(err.error || 'Error al iniciar generación');
       }
 
-      const data = await response.json();
-      messages.push({ role: 'ai', content: data.imageUrl, type: 'image' });
+      const { id } = await startRes.json();
+      imageBtn.textContent = '🎨 Generando (0s)';
+
+      // 2. Polling cada 2 segundos
+      let imageUrl = null;
+      let elapsed = 0;
+      const maxTime = 60000;
+      const interval = 2000;
+
+      // Mostrar mensaje de "generando" en el chat
+      const loadingMsg = {
+        role: 'assistant',
+        type: 'loading',
+        prompt: prompt
+      };
+      messages.push(loadingMsg);
+      renderChat();
+
+      while (!imageUrl && elapsed < maxTime) {
+        await new Promise(r => setTimeout(r, interval));
+        elapsed += interval;
+        imageBtn.textContent = `🎨 Generando (${elapsed/1000}s)`;
+
+        const checkRes = await fetch(`/api/check-image?id=${id}`);
+        const data = await checkRes.json();
+
+        if (data.status === 'succeeded') {
+          imageUrl = data.output?.[0] || data.output;
+          break;
+        } else if (data.status === 'failed') {
+          throw new Error(data.error || 'Fallo en generación');
+        }
+      }
+
+      // Reemplazar mensaje de loading con la imagen
+      const index = messages.findIndex(m => m === loadingMsg);
+      if (index !== -1) {
+        messages.splice(index, 1);
+      }
+
+      if (!imageUrl) {
+        throw new Error('Tiempo de espera agotado (60 segundos)');
+      }
+
+      // Agregar imagen al chat
+      messages.push({
+        role: 'assistant',
+        type: 'image',
+        prompt: prompt,
+        url: imageUrl
+      });
       saveMessages();
       renderChat();
 
-    } catch (e) {
-      loadingDiv.remove();
-      const div = document.createElement('div');
-      div.className = 'error';
-      div.textContent = '❌ Error al generar imagen: ' + e.message;
-      chatContainer.appendChild(div);
+      imagePrompt.value = '';
+
+    } catch (error) {
+      console.error(error);
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error';
+      errorDiv.textContent = `❌ Error imagen: ${error.message}`;
+      chatContainer.appendChild(errorDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
-      messages.pop();
+      setTimeout(() => errorDiv.remove(), 5000);
     } finally {
-      sendBtn.disabled = false;
       imageBtn.disabled = false;
-      userInput.focus();
+      imageBtn.textContent = '🎨 Generar imagen';
     }
   }
 
@@ -401,8 +473,6 @@
 
   // Send on button click
   sendBtn.addEventListener('click', sendMessage);
-
-  // Generate image on button click
   imageBtn.addEventListener('click', generateImage);
 
   // Send on Enter
@@ -410,6 +480,14 @@
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  });
+
+  // Image prompt on Enter
+  imagePrompt.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      generateImage();
     }
   });
 

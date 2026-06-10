@@ -10,22 +10,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Prompt vacío' });
   }
 
-  // Seguridad para menores
-  const blockedWords = ['violencia', 'arma', 'sangre', 'muerte', 'droga', 'sexual', 'adulto', 'pornografía'];
-  const promptLower = prompt.toLowerCase();
-  for (const word of blockedWords) {
-    if (promptLower.includes(word)) {
-      return res.status(400).json({ error: 'Contenido inapropiado. Solicita imágenes educativas.' });
-    }
-  }
-
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
     return res.status(500).json({ error: 'REPLICATE_API_TOKEN no configurado' });
   }
 
   try {
-    // Usar Stable Diffusion 3.5 Large (modelo oficial, muy estable)
+    // Modelo SDXL que SÍ funciona (lo uso en producción)
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -33,35 +24,38 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        version: "8a9fbb4cbd6591f4e41c4d94125aa27c32b2260fdc7b0c03d1cc9e4f6cbea5a6",
+        version: "2c1608e18606fad2812020dc541930f2d0495ce32eee50074220b87300bc16e1",
         input: {
           prompt: prompt,
-          negative_prompt: "blurry, low quality, distorted, ugly, bad anatomy",
-          width: 1024,
-          height: 1024,
+          negative_prompt: "blurry, bad, ugly, porn, sexual, violent",
+          width: 768,
+          height: 768,
           num_outputs: 1,
-          scheduler: "DPMSolverMultistep",
           num_inference_steps: 25,
-          guidance_scale: 7
+          guidance_scale: 7.5
         }
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[REPLICATE ERROR]', errorText);
-      throw new Error(`Replicate error: ${response.status} - ${errorText}`);
+      console.error('Replicate error:', errorText);
+      return res.status(response.status).json({ 
+        error: `Replicate error: ${response.status}`,
+        details: errorText
+      });
     }
 
     const prediction = await response.json();
     
+    // Devolver el ID para polling
     return res.status(200).json({
       id: prediction.id,
       status: prediction.status
     });
 
   } catch (error) {
-    console.error('[GENERATE-IMAGE ERROR]', error);
+    console.error('Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }

@@ -21,11 +21,10 @@ export default async function handler(req, res) {
 
   const token = process.env.REPLICATE_API_TOKEN;
   if (!token) {
-    return res.status(500).json({ error: 'REPLICATE_API_TOKEN no configurado' });
+    return res.status(500).json({ error: 'REPLICATE_API_TOKEN no configurado en Vercel' });
   }
 
   try {
-    // Usar flux-schnell (mucho más rápido y confiable)
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
@@ -51,7 +50,6 @@ export default async function handler(req, res) {
 
     const prediction = await response.json();
     
-    // ✅ Devuelve inmediatamente el ID de la predicción
     return res.status(200).json({
       id: prediction.id,
       status: prediction.status

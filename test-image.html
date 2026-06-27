@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Test de Generación de Imágenes</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 25px;
+        }
+        .test-area {
+            background: #0f3460;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .prompt-display {
+            background: #1a1a2e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 18px;
+            text-align: center;
+            border: 2px dashed #4CAF50;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 0;
+        }
+        button:hover:not(:disabled) {
+            transform: scale(1.02);
+            background: #45a049;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #log {
+            background: #0a0a1a;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 15px 0;
+            border: 1px solid #333;
+        }
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .log-error {
+            color: #ff6b6b;
+        }
+        .log-success {
+            color: #51cf66;
+        }
+        .log-info {
+            color: #74c0fc;
+        }
+        .log-warning {
+            color: #ffd43b;
+        }
+        #result {
+            margin-top: 15px;
+            text-align: center;
+        }
+        #result img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            margin-top: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .status-idle {
+            background: #495057;
+            color: white;
+        }
+        .status-loading {
+            background: #ffd43b;
+            color: #1a1a2e;
+        }
+        .status-success {
+            background: #51cf66;
+            color: #1a1a2e;
+        }
+        .status-error {
+            background: #ff6b6b;
+            color: white;
+        }
+        .btn-reset {
+            background: #ff6b6b;
+            margin-top: 10px;
+        }
+        .btn-reset:hover {
+            background: #e55a5a;
+        }
+        .flex-row {
+            display: flex;
+            gap: 10px;
+        }
+        .flex-row button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test de Imágenes</h1>
+        <p class="subtitle">Diagnóstico: ¿Por qué no genera imágenes?</p>
+
+        <div class="test-area">
+            <p style="color:#aaa;margin-bottom:5px;">📝 Prompt a probar:</p>
+            <div class="prompt-display">
+                "un perro surfeando en Honolulu, Hawai, estilo cartoon colorido, olas, sol"
+            </div>
+            
+            <div class="flex-row">
+                <button id="testBtn">🚀 Probar Generación</button>
+                <button id="testBtnCustom" style="background:#2196F3;">✏️ Usar mi prompt</button>
+            </div>
+            
+            <div style="margin-top:10px;display:none;" id="customPromptArea">
+                <input type="text" id="customPrompt" placeholder="Escribe tu prompt aquí..." 
+                       style="width:100%;padding:10px;border-radius:8px;border:none;margin:10px 0;">
+                <button id="generateCustom" style="background:#2196F3;padding:10px;">Generar con mi prompt</button>
+            </div>
+        </div>
+
+        <div id="statusContainer">
+            <span class="status-badge status-idle" id="statusBadge">⏸️ Esperando</span>
+        </div>
+
+        <div id="log">
+            <div class="log-entry log-info">📋 Log de eventos...</div>
+        </div>
+
+        <div id="result"></div>
+
+        <button class="btn-reset" id="resetBtn">🔄 Limpiar todo</button>
+    </div>
+
+    <script>
+        // ===== ELEMENTOS =====
+        const logDiv = document.getElementById('log');
+        const resultDiv = document.getElementById('result');
+        const statusBadge = document.getElementById('statusBadge');
+        const testBtn = document.getElementById('testBtn');
+        const testBtnCustom = document.getElementById('testBtnCustom');
+        const customPromptArea = document.getElementById('customPromptArea');
+        const customPrompt = document.getElementById('customPrompt');
+        const generateCustom = document.getElementById('generateCustom');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // ===== FUNCIONES DE LOG =====
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function setStatus(text, type = 'idle') {
+            statusBadge.textContent = text;
+            statusBadge.className = `status-badge status-${type}`;
+        }
+
+        // ===== FUNCIÓN PRINCIPAL DE TEST =====
+        async function testImageGeneration(prompt) {
+            // Limpiar resultado anterior
+            resultDiv.innerHTML = '';
+            addLog(`🎯 Iniciando prueba con prompt: "${prompt}"`, 'info');
+            setStatus('⏳ Generando...', 'loading');
+            testBtn.disabled = true;
+            testBtnCustom.disabled = true;
+
+            try {
+                // --- PASO 1: Verificar variables de entorno ---
+                addLog('🔍 PASO 1: Verificando API Key...', 'info');
+                
+                // --- PASO 2: Llamar a generate-image ---
+                addLog('📤 PASO 2: Enviando prompt a /api/generate-image', 'info');
+                
+                const initResponse = await fetch('/api/generate-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+
+                addLog(`📥 Respuesta del servidor: ${initResponse.status} ${initResponse.statusText}`, 'info');
+
+                if (!initResponse.ok) {
+                    const errorText = await initResponse.text();
+                    addLog(`❌ Error en generate-image: ${errorText}`, 'error');
+                    throw new Error(`Error ${initResponse.status}: ${errorText}`);
+                }
+
+                const initData = await initResponse.json();
+                addLog(`📦 Datos recibidos: ${JSON.stringify(initData, null, 2)}`, 'info');
+
+                if (!initData.id) {
+                    addLog('❌ No se recibió un ID de predicción', 'error');
+                    throw new Error('No se recibió ID de predicción');
+                }
+
+                const predictionId = initData.id;
+                addLog(`✅ ID de predicción obtenido: ${predictionId}`, 'success');
+
+                // --- PASO 3: Polling para obtener el resultado ---
+                addLog('🔄 PASO 3: Iniciando polling (esperando resultado)...', 'info');
+                let imageUrl = null;
+                let attempts = 0;
+                const maxAttempts = 30; // 30 intentos * 2 segundos = 60 segundos
+
+                while (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    attempts++;
+                    addLog(`⏳ Intento ${attempts}/${maxAttempts} - consultando estado...`, 'info');
+
+                    const checkResponse = await fetch(`/api/check-image?id=${predictionId}`);
+                    
+                    if (!checkResponse.ok) {
+                        addLog(`⚠️ Error en check-image: ${checkResponse.status}`, 'warning');
+                        continue;
+                    }
+
+                    const checkData = await checkResponse.json();
+                    addLog(`📊 Estado actual: ${checkData.status}`, 'info');
+
+                    if (checkData.status === 'succeeded') {
+                        if (checkData.output && checkData.output.length > 0) {
+                            imageUrl = checkData.output[0];
+                            addLog(`✅ ¡Imagen generada exitosamente! URL: ${imageUrl}`, 'success');
+                            break;
+                        } else {
+                            addLog('⚠️ Estado "succeeded" pero sin output', 'warning');
+                            break;
+                        }
+                    } else if (checkData.status === 'failed') {
+                        addLog(`❌ Generación falló: ${JSON.stringify(checkData)}`, 'error');
+                        throw new Error('La generación de imagen falló');
+                    }
+                }
+
+                // --- PASO 4: Mostrar resultado ---
+                if (imageUrl) {
+                    setStatus('✅ ¡Éxito!', 'success');
+                    addLog('🎉 Imagen generada correctamente', 'success');
+                    
+                    resultDiv.innerHTML = `
+                        <p style="color:#51cf66;font-weight:bold;">✅ ¡Imagen generada!</p>
+                        <p style="color:#aaa;font-size:14px;">Prompt: "${prompt}"</p>
+                        <img src="${imageUrl}" alt="Imagen generada" />
+                        <button onclick="window.open('${imageUrl}')" style="margin-top:10px;background:#2196F3;">
+                            🔗 Abrir imagen en nueva pestaña
+                        </button>
+                        <button onclick="downloadImage('${imageUrl}')" style="margin-top:10px;background:#4CAF50;">
+                            💾 Descargar imagen
+                        </button>
+                    `;
+                } else {
+                    setStatus('❌ Tiempo agotado', 'error');
+                    addLog('❌ Tiempo de espera agotado (60 segundos)', 'error');
+                    resultDiv.innerHTML = `
+                        <p style="color:#ff6b6b;">❌ Tiempo agotado. La imagen no se generó en 60 segundos.</p>
+                        <p style="color:#aaa;font-size:14px;">Verifica que la API de Replicate esté funcionando correctamente.</p>
+                    `;
+                }
+
+            } catch (error) {
+                setStatus('❌ Error', 'error');
+                addLog(`❌ ERROR: ${error.message}`, 'error');
+                resultDiv.innerHTML = `
+                    <p style="color:#ff6b6b;">❌ Error: ${error.message}</p>
+                    <p style="color:#aaa;font-size:14px;">Revisa el log para más detalles.</p>
+                `;
+            } finally {
+                testBtn.disabled = false;
+                testBtnCustom.disabled = false;
+                addLog('🏁 Prueba finalizada', 'info');
+            }
+        }
+
+        // ===== FUNCIÓN PARA DESCARGAR =====
+        window.downloadImage = async function(url) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'imagen-generada.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+                addLog('💾 Imagen descargada', 'success');
+            } catch (err) {
+                addLog(`❌ Error al descargar: ${err.message}`, 'error');
+            }
+        };
+
+        // ===== EVENTOS =====
+        testBtn.onclick = () => {
+            testImageGeneration('un perro surfeando en Honolulu, Hawai, estilo cartoon colorido, olas, sol');
+        };
+
+        testBtnCustom.onclick = () => {
+            customPromptArea.style.display = customPromptArea.style.display === 'none' ? 'block' : 'none';
+            if (customPromptArea.style.display === 'block') {
+                customPrompt.focus();
+            }
+        };
+
+        generateCustom.onclick = () => {
+            const prompt = customPrompt.value.trim();
+            if (!prompt) {
+                alert('Escribe un prompt primero');
+                return;
+            }
+            customPromptArea.style.display = 'none';
+            testImageGeneration(prompt);
+        };
+
+        customPrompt.onkeypress = (e) => {
+            if (e.key === 'Enter') {
+                generateCustom.click();
+            }
+        };
+
+        resetBtn.onclick = () => {
+            logDiv.innerHTML = '<div class="log-entry log-info">🔄 Log reiniciado</div>';
+            resultDiv.innerHTML = '';
+            setStatus('⏸️ Esperando', 'idle');
+            customPromptArea.style.display = 'none';
+            customPrompt.value = '';
+            addLog('🧹 Todo limpiado', 'info');
+        };
+
+        // ===== INICIALIZAR =====
+        addLog('🚀 Página de test lista. Haz clic en "Probar Generación"', 'success');
+    </script>
+</body>
+</html>

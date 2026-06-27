@@ -19,13 +19,8 @@
       text-align: center;
       border-bottom: 1px solid #ddd;
     }
-    header h1 {
-      color: #4CAF50;
-    }
-    header p {
-      color: #666;
-      font-size: 14px;
-    }
+    header h1 { color: #4CAF50; }
+    header p { color: #666; font-size: 14px; }
     #chat {
       flex: 1;
       overflow-y: auto;
@@ -68,9 +63,7 @@
       font-size: 12px;
       margin-top: 4px;
     }
-    .ai button:hover {
-      background: #1976D2;
-    }
+    .ai button:hover { background: #1976D2; }
     footer {
       background: white;
       padding: 12px;
@@ -94,26 +87,18 @@
       cursor: pointer;
       font-size: 16px;
     }
-    button:hover {
-      opacity: 0.8;
-    }
-    button#clear {
-      background: #f44336;
-    }
-    .comandos-ayuda {
-      background: #fff3cd;
+    button:hover { opacity: 0.8; }
+    button#clear { background: #f44336; }
+    .ayuda {
+      background: #e3f2fd;
       padding: 8px 12px;
       border-radius: 8px;
       font-size: 13px;
-      color: #856404;
+      color: #0d47a1;
       margin-bottom: 8px;
-      display: none;
     }
-    .comandos-ayuda.show {
-      display: block;
-    }
-    .comandos-ayuda code {
-      background: #e8e8e8;
+    .ayuda code {
+      background: #bbdefb;
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: bold;
@@ -123,15 +108,17 @@
 <body>
 <header>
   <h1>🤔 Mataburro</h1>
-  <p>Chat educativo con IA</p>
+  <p>Chat educativo con IA y generación de imágenes</p>
 </header>
 
 <div id="chat">
-  <div class="ai">👋 ¡Hola! Soy Susana, tu asistente educativa. Puedes preguntarme lo que quieras o pedirme imágenes con: <strong>/imagen</strong> o <strong>imagen de</strong></div>
+  <div class="ai">👋 ¡Hola! Soy Susana, tu asistente educativa.<br><br>
+  📝 <strong>Pregúntame lo que quieras</strong> o genera imágenes con:<br>
+  <code>/imagen</code> · <code>imagen de</code> · <code>haz una imagen de</code></div>
 </div>
 
 <footer>
-  <input type="text" id="input" placeholder="Escribe tu pregunta o /imagen ...">
+  <input type="text" id="input" placeholder="Escribe tu pregunta o 'imagen de ...'">
   <button id="send">Enviar</button>
   <button id="clear">Limpiar</button>
 </footer>
@@ -152,8 +139,7 @@
       messages = JSON.parse(saved);
       render();
     } else {
-      // Mensaje de bienvenida si no hay historial
-      messages = [{ role: 'ai', content: '👋 ¡Hola! Soy Susana, tu asistente educativa. Puedes preguntarme lo que quieras o pedirme imágenes con: /imagen o imagen de' }];
+      messages = [{ role: 'ai', content: '👋 ¡Hola! Soy Susana, tu asistente educativa.\n\n📝 Pregúntame lo que quieras o genera imágenes con:\n/imagen · imagen de · haz una imagen de' }];
       save();
       render();
     }
@@ -168,7 +154,6 @@
     messages.forEach(msg => {
       const div = document.createElement('div');
       div.className = msg.role;
-      // Si es un mensaje de IA con imagen, renderizar HTML especial
       if (msg.role === 'ai' && msg.isImage) {
         div.innerHTML = msg.content;
       } else {
@@ -181,19 +166,16 @@
 
   // ============ GENERACIÓN DE IMÁGENES ============
   async function generarImagenEnChat(prompt) {
-    // Limpiar el prompt (quitar comando)
-    const cleanPrompt = prompt.replace(/^\/imagen |^imagen de /, '').trim();
+    const cleanPrompt = prompt.trim();
     if (!cleanPrompt) {
-      alert('Escribe qué imagen quieres generar. Ej: /imagen un perro surfeando');
+      alert('Escribe qué imagen quieres generar. Ej: imagen de un perro surfeando');
       return;
     }
 
-    // Agregar mensaje de usuario
     messages.push({ role: 'user', content: `🎨 "${cleanPrompt}"` });
     save();
     render();
 
-    // Mostrar "generando" como mensaje de IA
     const thinkingMsg = document.createElement('div');
     thinkingMsg.className = 'ai';
     thinkingMsg.textContent = '🖼️ Generando imagen...';
@@ -201,13 +183,10 @@
     chatDiv.scrollTop = chatDiv.scrollHeight;
 
     try {
-      // URL de Pollinations con seed para evitar caché
       const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=768&height=768&nologo=true&seed=${Date.now()}`;
       
-      // Verificar que la imagen existe
       const img = new Image();
       img.onload = () => {
-        // Reemplazar mensaje "generando" con la imagen
         const html = `
           <p>🎨 Aquí tienes tu imagen:</p>
           <img src="${url}" alt="${cleanPrompt}" />
@@ -216,8 +195,6 @@
         `;
         thinkingMsg.innerHTML = html;
         chatDiv.scrollTop = chatDiv.scrollHeight;
-        
-        // Guardar en historial (como mensaje de IA con imagen)
         messages.push({ role: 'ai', content: html, isImage: true });
         save();
       };
@@ -225,7 +202,6 @@
       img.onerror = () => {
         thinkingMsg.textContent = '❌ Error: No se pudo generar la imagen. Intenta con otro prompt.';
         chatDiv.scrollTop = chatDiv.scrollHeight;
-        // Guardar mensaje de error
         messages.push({ role: 'ai', content: '❌ Error: No se pudo generar la imagen. Intenta con otro prompt.' });
         save();
       };
@@ -240,7 +216,6 @@
     }
   }
 
-  // Función para descargar imagen (se usa desde el HTML)
   function descargarImagen(url) {
     const link = document.createElement('a');
     link.href = url;
@@ -249,8 +224,6 @@
     link.click();
     document.body.removeChild(link);
   }
-
-  // Exponer función globalmente para usar desde el HTML
   window.descargarImagen = descargarImagen;
 
   // ============ ENVIAR MENSAJE ============
@@ -259,8 +232,39 @@
     if (!text) return;
 
     // === DETECTAR COMANDO DE IMAGEN ===
-    if (text.startsWith('/imagen ') || text.startsWith('imagen de ')) {
-      await generarImagenEnChat(text);
+    const imageCommands = [
+      '/imagen',
+      'imagen de',
+      'haz una imagen de',
+      'genera una imagen de',
+      'crea una imagen de',
+      'dibuja una imagen de',
+      'quiero una imagen de',
+      'necesito una imagen de'
+    ];
+    
+    let isImageCommand = false;
+    let cleanPrompt = '';
+    
+    for (const cmd of imageCommands) {
+      if (text.toLowerCase().startsWith(cmd)) {
+        isImageCommand = true;
+        cleanPrompt = text.substring(cmd.length).trim();
+        break;
+      }
+    }
+    
+    // Si no empieza con comando pero contiene "imagen de"
+    if (!isImageCommand && text.toLowerCase().includes('imagen de')) {
+      const idx = text.toLowerCase().indexOf('imagen de');
+      cleanPrompt = text.substring(idx + 9).trim();
+      if (cleanPrompt) {
+        isImageCommand = true;
+      }
+    }
+
+    if (isImageCommand && cleanPrompt) {
+      await generarImagenEnChat(cleanPrompt);
       input.value = '';
       input.focus();
       return;
@@ -298,7 +302,7 @@
   // ============ EVENTOS ============
   clearBtn.onclick = () => {
     if (confirm('¿Borrar todo el historial?')) {
-      messages = [{ role: 'ai', content: '👋 ¡Hola! Soy Susana, tu asistente educativa. Puedes preguntarme lo que quieras o pedirme imágenes con: /imagen o imagen de' }];
+      messages = [{ role: 'ai', content: '👋 ¡Hola! Soy Susana, tu asistente educativa.\n\n📝 Pregúntame lo que quieras o genera imágenes con:\n/imagen · imagen de · haz una imagen de' }];
       save();
       render();
     }

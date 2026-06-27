@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mataburro - Chat</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,6 +19,13 @@
       text-align: center;
       border-bottom: 1px solid #ddd;
     }
+    header h1 {
+      color: #4CAF50;
+    }
+    header p {
+      color: #666;
+      font-size: 14px;
+    }
     #chat {
       flex: 1;
       overflow-y: auto;
@@ -34,6 +41,7 @@
       padding: 8px 12px;
       border-radius: 12px;
       max-width: 70%;
+      word-wrap: break-word;
     }
     .ai {
       align-self: flex-start;
@@ -42,6 +50,26 @@
       padding: 8px 12px;
       border-radius: 12px;
       max-width: 70%;
+      word-wrap: break-word;
+    }
+    .ai img {
+      max-width: 100%;
+      border-radius: 12px;
+      margin-top: 8px;
+      max-height: 400px;
+    }
+    .ai button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .ai button:hover {
+      background: #1976D2;
     }
     footer {
       background: white;
@@ -55,6 +83,7 @@
       padding: 10px;
       border: 1px solid #ccc;
       border-radius: 8px;
+      font-size: 16px;
     }
     button {
       padding: 10px 16px;
@@ -63,33 +92,71 @@
       border: none;
       border-radius: 8px;
       cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      opacity: 0.8;
     }
     button#clear {
       background: #f44336;
     }
+    .comandos-ayuda {
+      background: #fff3cd;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #856404;
+      margin-bottom: 8px;
+      display: none;
+    }
+    .comandos-ayuda.show {
+      display: block;
+    }
+    .comandos-ayuda code {
+      background: #e8e8e8;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-<header><h1>🤔 Mataburro</h1><p>Chat educativo</p></header>
-<div id="chat"></div>
+<header>
+  <h1>🤔 Mataburro</h1>
+  <p>Chat educativo con IA</p>
+</header>
+
+<div id="chat">
+  <div class="ai">👋 ¡Hola! Soy Susana, tu asistente educativa. Puedes preguntarme lo que quieras o pedirme imágenes con: <strong>/imagen</strong> o <strong>imagen de</strong></div>
+</div>
+
 <footer>
-  <input type="text" id="input" placeholder="Escribe tu pregunta...">
+  <input type="text" id="input" placeholder="Escribe tu pregunta o /imagen ...">
   <button id="send">Enviar</button>
   <button id="clear">Limpiar</button>
 </footer>
 
 <script>
+  // ============ ELEMENTOS ============
   const chatDiv = document.getElementById('chat');
   const input = document.getElementById('input');
   const sendBtn = document.getElementById('send');
   const clearBtn = document.getElementById('clear');
 
+  // ============ HISTORIAL ============
   let messages = [];
 
   function load() {
     const saved = localStorage.getItem('mataburro_messages');
-    messages = saved ? JSON.parse(saved) : [];
-    render();
+    if (saved) {
+      messages = JSON.parse(saved);
+      render();
+    } else {
+      // Mensaje de bienvenida si no hay historial
+      messages = [{ role: 'ai', content: '👋 ¡Hola! Soy Susana, tu asistente educativa. Puedes preguntarme lo que quieras o pedirme imágenes con: /imagen o imagen de' }];
+      save();
+      render();
+    }
   }
 
   function save() {
@@ -101,16 +168,105 @@
     messages.forEach(msg => {
       const div = document.createElement('div');
       div.className = msg.role;
-      div.textContent = msg.content;
+      // Si es un mensaje de IA con imagen, renderizar HTML especial
+      if (msg.role === 'ai' && msg.isImage) {
+        div.innerHTML = msg.content;
+      } else {
+        div.textContent = msg.content;
+      }
       chatDiv.appendChild(div);
     });
     chatDiv.scrollTop = chatDiv.scrollHeight;
   }
 
+  // ============ GENERACIÓN DE IMÁGENES ============
+  async function generarImagenEnChat(prompt) {
+    // Limpiar el prompt (quitar comando)
+    const cleanPrompt = prompt.replace(/^\/imagen |^imagen de /, '').trim();
+    if (!cleanPrompt) {
+      alert('Escribe qué imagen quieres generar. Ej: /imagen un perro surfeando');
+      return;
+    }
+
+    // Agregar mensaje de usuario
+    messages.push({ role: 'user', content: `🎨 "${cleanPrompt}"` });
+    save();
+    render();
+
+    // Mostrar "generando" como mensaje de IA
+    const thinkingMsg = document.createElement('div');
+    thinkingMsg.className = 'ai';
+    thinkingMsg.textContent = '🖼️ Generando imagen...';
+    chatDiv.appendChild(thinkingMsg);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+
+    try {
+      // URL de Pollinations con seed para evitar caché
+      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=768&height=768&nologo=true&seed=${Date.now()}`;
+      
+      // Verificar que la imagen existe
+      const img = new Image();
+      img.onload = () => {
+        // Reemplazar mensaje "generando" con la imagen
+        const html = `
+          <p>🎨 Aquí tienes tu imagen:</p>
+          <img src="${url}" alt="${cleanPrompt}" />
+          <p style="font-size:12px;color:#999;margin-top:4px;">"${cleanPrompt}"</p>
+          <button onclick="descargarImagen('${url}')">💾 Descargar</button>
+        `;
+        thinkingMsg.innerHTML = html;
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+        
+        // Guardar en historial (como mensaje de IA con imagen)
+        messages.push({ role: 'ai', content: html, isImage: true });
+        save();
+      };
+      
+      img.onerror = () => {
+        thinkingMsg.textContent = '❌ Error: No se pudo generar la imagen. Intenta con otro prompt.';
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+        // Guardar mensaje de error
+        messages.push({ role: 'ai', content: '❌ Error: No se pudo generar la imagen. Intenta con otro prompt.' });
+        save();
+      };
+      
+      img.src = url;
+
+    } catch (error) {
+      thinkingMsg.textContent = `❌ Error: ${error.message}`;
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+      messages.push({ role: 'ai', content: `❌ Error: ${error.message}` });
+      save();
+    }
+  }
+
+  // Función para descargar imagen (se usa desde el HTML)
+  function descargarImagen(url) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mataburro-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Exponer función globalmente para usar desde el HTML
+  window.descargarImagen = descargarImagen;
+
+  // ============ ENVIAR MENSAJE ============
   async function sendMessage() {
     const text = input.value.trim();
     if (!text) return;
 
+    // === DETECTAR COMANDO DE IMAGEN ===
+    if (text.startsWith('/imagen ') || text.startsWith('imagen de ')) {
+      await generarImagenEnChat(text);
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    // === CHAT NORMAL ===
     messages.push({ role: 'user', content: text });
     save();
     render();
@@ -139,16 +295,19 @@
     }
   }
 
+  // ============ EVENTOS ============
   clearBtn.onclick = () => {
-    if (confirm('¿Borrar todo?')) {
-      messages = [];
+    if (confirm('¿Borrar todo el historial?')) {
+      messages = [{ role: 'ai', content: '👋 ¡Hola! Soy Susana, tu asistente educativa. Puedes preguntarme lo que quieras o pedirme imágenes con: /imagen o imagen de' }];
       save();
       render();
     }
   };
+
   sendBtn.onclick = sendMessage;
   input.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
 
+  // ============ INICIALIZAR ============
   load();
   input.focus();
 </script>

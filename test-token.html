@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔑 Test Token Hugging Face</title>
+  <style>
+    body { font-family: system-ui; background: #1a1a2e; color: white; padding: 30px; }
+    .container { max-width: 600px; margin: auto; background: #16213e; padding: 30px; border-radius: 20px; }
+    button { padding: 12px 20px; background: #4CAF50; border: none; color: white; border-radius: 8px; cursor: pointer; }
+    #result { margin-top: 20px; white-space: pre-wrap; background: #0a0a1a; padding: 15px; border-radius: 10px; }
+    .error { color: #ff6b6b; }
+    .success { color: #51cf66; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🔑 Test de Token</h1>
+  <p>Verifica si tu token de Hugging Face es válido.</p>
+  <button id="testBtn">▶️ Probar Token</button>
+  <div id="result">Esperando...</div>
+</div>
+
+<script>
+  document.getElementById('testBtn').onclick = async function() {
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = '⏳ Probando...';
+    try {
+      const response = await fetch('/api/test-token');
+      const data = await response.json();
+      if (response.ok && data.ok) {
+        resultDiv.innerHTML = `<span class="success">✅ Token válido</span>\n${JSON.stringify(data.data, null, 2)}`;
+      } else {
+        resultDiv.innerHTML = `<span class="error">❌ Token inválido o error</span>\n${JSON.stringify(data, null, 2)}`;
+      }
+    } catch (err) {
+      resultDiv.innerHTML = `<span class="error">❌ Error de conexión: ${err.message}</span>`;
+    }
+  };
+</script>
+</body>
+</html>

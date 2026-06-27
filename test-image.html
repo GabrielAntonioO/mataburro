@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🧪 Test Hugging Face</title>
+  <title>🧪 Test Hugging Face v2</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -53,13 +53,16 @@
     .error { color: #ff6b6b; }
     .success { color: #51cf66; }
     .info { color: #74c0fc; }
+    .warning { color: #ffd43b; }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>🧪 Test Hugging Face</h1>
-  <p>Prompt: "un perro surfeando en Honolulu, Hawai, estilo cartoon"</p>
+  <h1>🧪 Test Hugging Face v2</h1>
+  <p>Modelo: <strong>runwayml/stable-diffusion-v1-5</strong> (más rápido)</p>
+  <p style="color:#aaa;font-size:14px;">Prompt: "un perro surfeando en Honolulu, Hawai, estilo cartoon"</p>
   <button id="testBtn">🚀 Probar Generación</button>
+  <button id="testShortBtn" style="background:#2196F3;">⚡ Prompt corto</button>
   <div id="log">📋 Esperando acción...</div>
   <div id="result"></div>
 </div>
@@ -68,6 +71,7 @@
   const logDiv = document.getElementById('log');
   const resultDiv = document.getElementById('result');
   const testBtn = document.getElementById('testBtn');
+  const testShortBtn = document.getElementById('testShortBtn');
 
   function addLog(msg, type = 'info') {
     const entry = document.createElement('div');
@@ -77,22 +81,24 @@
     logDiv.scrollTop = logDiv.scrollHeight;
   }
 
-  async function testGeneration() {
+  async function testGeneration(prompt) {
     resultDiv.innerHTML = '';
     addLog('🚀 Iniciando prueba...', 'info');
     testBtn.disabled = true;
+    testShortBtn.disabled = true;
 
     try {
-      const prompt = 'un perro surfeando en Honolulu, Hawai, estilo cartoon colorido, olas, sol';
       addLog(`📤 Enviando prompt: "${prompt}"`, 'info');
 
+      const startTime = Date.now();
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt })
       });
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
-      addLog(`📥 Respuesta: ${response.status} ${response.statusText}`, 'info');
+      addLog(`📥 Respuesta: ${response.status} ${response.statusText} (${elapsed}s)`, 'info');
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -102,7 +108,7 @@
       const data = await response.json();
       
       if (data.success && data.image) {
-        addLog('✅ ¡Imagen generada!', 'success');
+        addLog(`✅ ¡Imagen generada! (${elapsed}s)`, 'success');
         resultDiv.innerHTML = `
           <p style="color:#51cf66;">✅ Éxito</p>
           <img src="${data.image}" alt="Imagen generada" />
@@ -116,11 +122,13 @@
       resultDiv.innerHTML = `<p style="color:#ff6b6b;">❌ ${err.message}</p>`;
     } finally {
       testBtn.disabled = false;
+      testShortBtn.disabled = false;
       addLog('🏁 Prueba finalizada', 'info');
     }
   }
 
-  testBtn.onclick = testGeneration;
+  testBtn.onclick = () => testGeneration('un perro surfeando en Honolulu, Hawai, estilo cartoon colorido, olas, sol');
+  testShortBtn.onclick = () => testGeneration('perro surfeando en Honolulu');
 </script>
 </body>
 </html>

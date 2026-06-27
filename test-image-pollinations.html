@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 Generador de Imágenes (Pollinations)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #1a1a2e;
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: #16213e;
+      padding: 30px;
+      border-radius: 20px;
+      max-width: 700px;
+      width: 100%;
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 10px;
+      border: none;
+      font-size: 16px;
+    }
+    input {
+      background: #0a0a1a;
+      color: white;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { transform: scale(1.02); }
+    #result {
+      margin-top: 20px;
+      min-height: 100px;
+    }
+    #result img {
+      max-width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .loading {
+      color: #ffd43b;
+      font-size: 18px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎨 Generador de Imágenes</h1>
+  <p style="color:#aaa;margin-bottom:15px;">Sin registros, sin API keys, 100% gratuito</p>
+  
+  <input type="text" id="promptInput" placeholder="Ej: un perro surfeando en Honolulu" value="un perro surfeando en Honolulu, estilo cartoon">
+  <button id="generateBtn">🚀 Generar Imagen</button>
+  
+  <div id="result">
+    <p style="color:#666;">Escribe algo y presiona "Generar"</p>
+  </div>
+</div>
+
+<script>
+  const input = document.getElementById('promptInput');
+  const btn = document.getElementById('generateBtn');
+  const result = document.getElementById('result');
+
+  async function generarImagen() {
+    const prompt = input.value.trim();
+    if (!prompt) {
+      alert('Escribe una descripción');
+      return;
+    }
+
+    result.innerHTML = `<div class="loading">⏳ Generando imagen de "${prompt}"...</div>`;
+    btn.disabled = true;
+
+    try {
+      // La URL mágica de Pollinations
+      const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&nologo=true`;
+      
+      // Verificar que la imagen existe
+      const img = new Image();
+      img.onload = () => {
+        result.innerHTML = `
+          <p style="color:#51cf66;">✅ Imagen generada</p>
+          <img src="${url}" alt="${prompt}" />
+          <p style="color:#aaa;font-size:14px;margin-top:10px;">"${prompt}"</p>
+          <button onclick="window.open('${url}')" style="background:#2196F3;margin-top:10px;">🔗 Abrir en nueva pestaña</button>
+          <button onclick="descargarImagen('${url}')" style="background:#4CAF50;margin-top:10px;">💾 Descargar</button>
+        `;
+        btn.disabled = false;
+      };
+      
+      img.onerror = () => {
+        // Si la imagen no carga, intentar con otro parámetro
+        const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512`;
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => {
+          result.innerHTML = `
+            <p style="color:#ffd43b;">⚠️ Imagen generada (calidad reducida)</p>
+            <img src="${fallbackUrl}" alt="${prompt}" />
+            <p style="color:#aaa;font-size:14px;margin-top:10px;">"${prompt}"</p>
+          `;
+          btn.disabled = false;
+        };
+        fallbackImg.onerror = () => {
+          result.innerHTML = `<p style="color:#ff6b6b;">❌ Error: No se pudo generar la imagen. Intenta con otro prompt.</p>`;
+          btn.disabled = false;
+        };
+        fallbackImg.src = fallbackUrl;
+      };
+      
+      img.src = url;
+
+    } catch (error) {
+      result.innerHTML = `<p style="color:#ff6b6b;">❌ Error: ${error.message}</p>`;
+      btn.disabled = false;
+    }
+  }
+
+  function descargarImagen(url) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'imagen-generada.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  btn.onclick = generarImagen;
+  input.onkeypress = (e) => { if (e.key === 'Enter') generarImagen(); };
+  
+  // Generar automáticamente al cargar
+  setTimeout(generarImagen, 500);
+</script>
+</body>
+</html>

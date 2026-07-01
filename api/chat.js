@@ -12,6 +12,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Falta historial de mensajes' });
   }
 
+  // ============ FUNCIÓN PARA LIMPIAR RESPUESTAS ============
+  function limpiarRespuesta(texto) {
+    // Eliminar todo lo que esté entre <think> y </think>
+    return texto.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  }
+
   const systemPrompt = `Eres un asistente educativo amigable y responsable. Ayudas a una estudiante de 12 años con tareas, preguntas escolares, curiosidades y problemas del día a día.
 
 Reglas importantes:
@@ -46,8 +52,7 @@ Reglas importantes:
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        // 👇 ¡AQUÍ ESTÁ EL CAMBIO! 👇
-        model: 'qwen/qwen3.6-27b', // Modelo nuevo y recomendado
+        model: 'qwen/qwen3.6-27b',
         messages: groqMessages,
         temperature: 0.7,
         max_tokens: 1024
@@ -61,8 +66,11 @@ Reglas importantes:
 
     const data = await response.json();
     const aiResponse = data.choices[0].message.content;
+    
+    // === LIMPIAR LA RESPUESTA ===
+    const respuestaLimpia = limpiarRespuesta(aiResponse);
 
-    return res.status(200).json({ response: aiResponse });
+    return res.status(200).json({ response: respuestaLimpia });
 
   } catch (e) {
     console.error('Error:', e.message);

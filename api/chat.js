@@ -46,7 +46,8 @@ Reglas importantes:
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
-        llama-3.3-70b-versatile
+        // 👇 ¡AQUÍ ESTÁ EL CAMBIO! 👇
+        model: 'qwen/qwen3.6-27b', // Modelo nuevo y recomendado
         messages: groqMessages,
         temperature: 0.7,
         max_tokens: 1024
